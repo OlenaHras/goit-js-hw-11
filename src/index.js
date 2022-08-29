@@ -3,27 +3,43 @@ import PictureApiService from "./components/pic-service";
 import SimpleLightbox from "simplelightbox";
 import "simplelightbox/dist/simple-lightbox.min.css";
 
-
+window.addEventListener('scroll', infiniteScroll);
 document.querySelector('.search-form').addEventListener('submit', onSubmitClick);
 const galleryContainer = document.querySelector('.gallery');
 const apiService = new PictureApiService()
 let simpleLightBox = null;
+let isExecuted = false;
+let totalPics = 0;
 
 function onSubmitClick(event) {
   event.preventDefault();
   clearArticles();
   apiService.query = event.currentTarget.elements.searchQuery.value;
   apiService.resetPage();
-
+  
   apiService.fetchArticles()
     .then(articles => {
+      if (articles.hits.length === 0) {
+        return  Notiflix.Notify.failure('Sorry, there are no images matching your search query. Please try again.');
+      };
+      
       Notiflix.Notify.success(`Hooray! We found ${articles.totalHits} images.`);
-    return articles})
-    .then(articlesMarkup);
+      totalPics = articles.total;
+      articlesMarkup(articles)
+    })
 };
 
 function loadMore() {
-  apiService.fetchArticles().then(articlesMarkup);
+if (apiService.page > Math.ceil(totalPics / apiService.picsPerPage)) {
+  return;
+  }  
+  apiService.fetchArticles()
+    .then(articles => {
+      articlesMarkup(articles);
+      if (apiService.page > Math.ceil(totalPics / apiService.picsPerPage)) {
+        Notiflix.Notify.warning("We're sorry, but you've reached the end of search results.");
+      }
+    })
 };
 
 function articlesMarkup(articles) {
@@ -54,18 +70,16 @@ function articlesMarkup(articles) {
 
 function clearArticles() {
   galleryContainer.innerHTML = '';
-}
+};
 
-let isExecuted = false;
-window.addEventListener('scroll', () => {
-
-    if(window.scrollY + window.innerHeight >=
-      document.documentElement.scrollHeight && !isExecuted) {
-      isExecuted = true;
-      setTimeout(() => {
-                isExecuted = false;
-            }, 3000);
-      loadMore();  
+function infiniteScroll() {
+    if (window.scrollY + window.innerHeight >=
+    document.documentElement.scrollHeight && !isExecuted) {
+    isExecuted = true;
+    setTimeout(() => {
+      isExecuted = false;
+    }, 3000);
+    loadMore();
   }
   simpleLightBox.refresh();
-})
+}
